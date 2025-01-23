@@ -8,22 +8,22 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager  # Manage ChromeDriver versions
+from webdriver_manager.chrome import ChromeDriverManager  # Manages ChromeDriver versions
 
 app = Flask(__name__)
 
 def extract_images_and_metadata(url):
     """Extract metadata and image URLs from a webpage using Selenium and BeautifulSoup."""
     try:
-        # Configure Chrome options for headless browsing
+        # Configure Chromium options
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Run without a GUI
+        chrome_options.add_argument("--headless")  # Run in headless mode (no GUI)
         chrome_options.add_argument("--no-sandbox")  # Required for Linux environments
         chrome_options.add_argument("--disable-dev-shm-usage")  # Prevent shared memory issues
 
-        # Dynamically check for the Chrome binary location if not using default
-        chrome_binary_path = os.environ.get("GOOGLE_CHROME_BIN", "/usr/bin/google-chrome")
-        chrome_options.binary_location = chrome_binary_path
+        # Dynamically resolve the Chromium binary location
+        chromium_binary_path = os.environ.get("CHROMIUM_BIN", "/usr/bin/chromium-browser")
+        chrome_options.binary_location = chromium_binary_path
 
         # Set up Selenium WebDriver with WebDriver Manager
         driver_service = Service(ChromeDriverManager().install())
@@ -34,7 +34,7 @@ def extract_images_and_metadata(url):
         html_content = driver.page_source  # Get the page source
         driver.quit()  # Close the browser session
 
-        # Parse the webpage content
+        # Parse the HTML content with BeautifulSoup
         soup = BeautifulSoup(html_content, "html.parser")
 
         # Extract the page title
