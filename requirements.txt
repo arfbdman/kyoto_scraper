@@ -65,3 +65,4 @@ wheel==0.45.1
 wsproto==1.2.0
 gunicorn
 webdriver-manager
+chromedriver-binary
