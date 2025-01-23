@@ -1,46 +1,45 @@
 import os
 from urllib.parse import urljoin, urlparse
 from datetime import datetime
-from io import BytesIO
+from io import BytesIO  # To handle in-memory files
 from flask import Flask, request, render_template, jsonify, send_file
 import openpyxl
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-import chromedriver_binary  # Ensures compatibility with Selenium for Chrome
+from webdriver_manager.chrome import ChromeDriverManager  # Automatic driver management
 
-# Flask app
 app = Flask(__name__)
 
 def extract_images_and_metadata(url):
     """Extract metadata and image URLs using Selenium and BeautifulSoup."""
     try:
-        # Specify Chrome options for headless browsing
+        # Configure Chrome options
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Run headless (no browser UI)
+        chrome_options.add_argument("--headless")  # Run in headless mode (no UI)
         chrome_options.add_argument("--no-sandbox")  # Required for Linux environments
         chrome_options.add_argument("--disable-dev-shm-usage")  # Prevent shared memory issues
-        chrome_options.binary_location = "/usr/bin/google-chrome"  # Manually specify the Chrome binary
 
-        # Start Selenium WebDriver
-        driver = webdriver.Chrome(service=Service(), options=chrome_options)
+        # Use WebDriver Manager to automatically install and configure ChromeDriver
+        driver_service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=driver_service, options=chrome_options)
 
-        # Open the specified URL and fetch HTML content
+        # Open the target URL
         driver.get(url)
         html_content = driver.page_source
-        driver.quit()  # Close the browser session
+        driver.quit()  # Close the ChromeDriver session
 
-        # Parse the webpage content
+        # Parse the page content with BeautifulSoup
         soup = BeautifulSoup(html_content, "html.parser")
 
-        # Extract page title
+        # Extract the page title
         title = soup.title.string if soup.title else "No Title Available"
 
-        # Extract project name from URL
+        # Extract the project name from the URL
         project_name = urlparse(url).path.strip("/").split("/")[-1]
 
-        # Extract all image URLs
+        # Extract all image URLs on the page
         img_tags = soup.find_all("img")
         img_urls = [
             urljoin(url, img.get("src") or img.get("data-src") or img.get("data-lazy-src"))
@@ -60,7 +59,7 @@ def extract_images_and_metadata(url):
         }
 
 def save_to_excel(data):
-    """Save extracted data to an Excel file in memory."""
+    """Save extracted data to an in-memory Excel file."""
     wb = openpyxl.Workbook()
     sheet = wb.active
     sheet.title = "Scraped Data"
@@ -75,6 +74,7 @@ def save_to_excel(data):
 
         sheet.append([url, project_name, title, img_urls, error])
 
+    # Save the Excel file to an in-memory file object
     excel_file = BytesIO()
     wb.save(excel_file)
     excel_file.seek(0)
@@ -90,13 +90,13 @@ def scrape():
     if not urls:
         return jsonify({"error": "No URLs provided."}), 400
 
-    # Scrape each URL and collect results
+    # Scrape each URL and collect the results
     results = []
     for url in urls:
         result = extract_images_and_metadata(url)
         results.append(result)
 
-    # Generate the Excel file with the results
+    # Generate the Excel file with the scraping results
     excel_file = save_to_excel(results)
 
     return send_file(
