@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Scraper</title>
+</head>
+<body>
+    <h1>Web Image Scraper</h1>
+    <form id="scraping-form">
+        <textarea id="urls" rows="10" cols="50" placeholder="Enter URLs, one per line"></textarea><br>
+        <button type="button" onclick="startScraping()">Start Scraping</button>
+    </form>
+    <div id="result">
+        <h2>Results</h2>
+        <pre id="output"></pre>
+    </div>
+    <script>
+        async function startScraping() {
+            const urls = document.getElementById("urls").value.split("\n").map(url => url.trim()).filter(url => url);
+            if (urls.length === 0) {
+                alert("Please enter at least one URL.");
+                return;
+            }
+
+            const response = await fetch("/scrape", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ urls }),
+            });
+            const output = await response.json();
+            document.getElementById("output").innerText = JSON.stringify(output, null, 2);
+        }
+    </script>
+</body>
+</html>
