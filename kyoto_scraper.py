@@ -8,25 +8,26 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager  # Automatically manages chromedriver
 
 app = Flask(__name__)
 
 def extract_images_and_metadata(url):
     """Extract metadata and image URLs using Selenium and BeautifulSoup."""
     try:
-        # Configure Selenium to use Render's Chromium browser and chromedriver
+        # Configure Selenium to use a custom-installed Chromium browser
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Run Chromium headlessly
+        chrome_options.add_argument("--headless")  # Run in headless mode
         chrome_options.add_argument("--no-sandbox")  # Required for Linux environments
         chrome_options.add_argument("--disable-dev-shm-usage")  # Prevent shared memory issues
-        chrome_options.binary_location = "/usr/bin/chromium-browser"  # Use Render’s Chromium
 
-        # Use WebDriver Manager to handle ChromeDriver
-        driver_service = Service(ChromeDriverManager().install())
+        # Use the custom Chromium binary installed in /usr/bin/google-chrome
+        chrome_options.binary_location = "/usr/bin/google-chrome"
+
+        # Use Selenium's ChromeDriver
+        driver_service = Service("/usr/bin/chromedriver")  # Assuming Render installs chromedriver here
         driver = webdriver.Chrome(service=driver_service, options=chrome_options)
 
-        # Open the target URL
+        # Open the webpage
         driver.get(url)
         html_content = driver.page_source
         driver.quit()  # Close the browser session

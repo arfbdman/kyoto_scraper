@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: kyoto-scraper
+    env: python
+    runtime: python3
+    buildCommand: "./render-build.sh && pip install -r requirements.txt"
+    startCommand: "gunicorn kyoto_scraper:app"
