@@ -1,28 +1,43 @@
 import os
-import requests
 from urllib.parse import urljoin, urlparse
 from datetime import datetime
-from bs4 import BeautifulSoup
-from flask import Flask, request, render_template, jsonify, send_file
+from io import BytesIO  # For in-memory file handling
+from flask import Flask, request, render_template, send_file, jsonify
 import openpyxl
-from io import BytesIO  # For handling in-memory files
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 
+# Flask app
 app = Flask(__name__)
 
 def extract_images_and_metadata(url):
-    """Extract metadata and image URLs from the target webpage."""
+    """Extract metadata and image URLs from a webpage using Selenium and BeautifulSoup."""
     try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        # Setup Selenium WebDriver (Headless Chrome)
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")  # Run in headless mode (no UI)
+        chrome_options.add_argument("--no-sandbox")  # Required for some Linux environments
+        chrome_options.add_argument("--disable-dev-shm-usage")  # Prevent shared memory issues
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-        # Extract title of the page
+        # Open the specified URL
+        driver.get(url)
+        html_content = driver.page_source
+        driver.quit()  # Close the browser session
+
+        # Parse the webpage
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # Extract page title
         title = soup.title.string if soup.title else "No Title Available"
 
         # Extract project name from URL
         project_name = urlparse(url).path.strip("/").split("/")[-1]
 
-        # Extract all image URLs
+        # Extract image URLs
         img_tags = soup.find_all("img")
         img_urls = [
             urljoin(url, img.get("src") or img.get("data-src") or img.get("data-lazy-src"))
@@ -33,29 +48,32 @@ def extract_images_and_metadata(url):
             "url": url,
             "title": title,
             "project_name": project_name,
-            "image_urls": img_urls
+            "image_urls": img_urls,
         }
     except Exception as e:
-        # Return the error as part of the result if anything goes wrong
-        return {"url": url, "error": str(e)}
+        # Return error message if the scraping fails
+        return {
+            "url": url,
+            "error": str(e),
+        }
 
 def save_to_excel(data):
     """Save extracted data to an in-memory Excel file."""
     wb = openpyxl.Workbook()
     sheet = wb.active
     sheet.title = "Scraped Data"
-    sheet.append(["URL", "Project Name", "Title", "Image URLs", "Error"])
+    sheet.append(["URL", "Project Name", "Title", "Image URLs", "Error"])  # Headers
 
     for row in data:
         url = row.get("url", "N/A")
         project_name = row.get("project_name", "N/A")
         title = row.get("title", "N/A")
-        img_urls = "\n".join(row.get("image_urls", []))  # Join image URLs as newline-separated text
+        img_urls = "\n".join(row.get("image_urls", []))  # Join image URLs with line breaks
         error = row.get("error", "")
 
         sheet.append([url, project_name, title, img_urls, error])
 
-    # Save the Excel file to an in-memory object
+    # Save Excel file to an in-memory object
     excel_file = BytesIO()
     wb.save(excel_file)
     excel_file.seek(0)
@@ -71,16 +89,16 @@ def scrape():
     if not urls:
         return jsonify({"error": "No URLs provided."}), 400
 
-    # Scrape each URL and collect results
+    # Scrape each URL and collect the results
     results = []
     for url in urls:
         result = extract_images_and_metadata(url)
         results.append(result)
 
-    # Generate an Excel file with the results
+    # Generate an Excel file from the results
     excel_file = save_to_excel(results)
 
-    # Return the file to the user as a downloadable response
+    # Return the file as a downloadable response
     return send_file(
         excel_file,
         as_attachment=True,
