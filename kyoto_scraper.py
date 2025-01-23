@@ -1,14 +1,14 @@
 import os
 from urllib.parse import urljoin, urlparse
 from datetime import datetime
-from io import BytesIO  # To handle in-memory Excel files
+from io import BytesIO
 from flask import Flask, request, render_template, jsonify, send_file
 import openpyxl
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager  # Manages ChromeDriver versions
+from webdriver_manager.chrome import ChromeDriverManager
 
 app = Flask(__name__)
 
@@ -17,13 +17,13 @@ def extract_images_and_metadata(url):
     try:
         # Configure Chromium options
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Run in headless mode (no GUI)
-        chrome_options.add_argument("--no-sandbox")  # Required for Linux environments
-        chrome_options.add_argument("--disable-dev-shm-usage")  # Prevent shared memory issues
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
 
-        # Dynamically resolve the Chromium binary location
-        chromium_binary_path = os.environ.get("CHROMIUM_BIN", "/usr/bin/chromium-browser")
-        chrome_options.binary_location = chromium_binary_path
+        # Set the Chromium binary path explicitly
+        chrome_binary_path = "/usr/bin/chromium-browser"
+        chrome_options.binary_location = chrome_binary_path
 
         # Set up Selenium WebDriver with WebDriver Manager
         driver_service = Service(ChromeDriverManager().install())
@@ -40,7 +40,7 @@ def extract_images_and_metadata(url):
         # Extract the page title
         title = soup.title.string if soup.title else "No Title Available"
 
-        # Extract the project name from the URL
+        # Extract project name from the URL
         project_name = urlparse(url).path.strip("/").split("/")[-1]
 
         # Extract all image URLs from the page
